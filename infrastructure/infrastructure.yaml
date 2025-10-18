@@ -2,6 +2,11 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: 'AWS Free Tier DevOps Project - Infrastructure as Code'
 
 Parameters:
+  KeyPairName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Name of an existing EC2 KeyPair to SSH into the instance
+    ConstraintDescription: Must be the name of an existing EC2 KeyPair
+
   InstanceProfileName:
     Type: String
     Default: EC2InstanceRole
@@ -27,10 +32,10 @@ Resources:
           ToPort: 80
           CidrIp: 0.0.0.0/0
           Description: HTTP access
-        # Allow application port 8080 (for Java app)
+        # Allow application port 2000 (for Java app)
         - IpProtocol: tcp
-          FromPort: 8080
-          ToPort: 8080
+          FromPort: 2000
+          ToPort: 2000
           CidrIp: 0.0.0.0/0
           Description: Application port
       SecurityGroupEgress:
