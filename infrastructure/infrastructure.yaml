@@ -13,6 +13,7 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Security group for web server - Allow HTTP and SSH
+      VpcId: !Sub '{{resolve:ec2:DescribeSecurityGroups:SecurityGroups[0].VpcId}}'
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 22
@@ -29,10 +30,6 @@ Resources:
           ToPort: 2000
           CidrIp: 0.0.0.0/0
           Description: Application port
-      SecurityGroupEgress:
-        - IpProtocol: -1
-          CidrIp: 0.0.0.0/0
-          Description: Allow all outbound traffic
       Tags:
         - Key: Name
           Value: WebServerSG
@@ -40,16 +37,11 @@ Resources:
   # S3 Bucket for Build Artifacts
   ArtifactBucket:
     Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
     Properties:
       BucketName: !Sub 'aws-devops-artifacts-${AWS::AccountId}-${AWS::Region}'
       VersioningConfiguration:
         Status: Enabled
-      LifecycleConfiguration:
-        Rules:
-          - Id: DeleteOldArtifacts
-            Status: Enabled
-            ExpirationInDays: 7
-            NoncurrentVersionExpirationInDays: 1
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
