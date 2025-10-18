@@ -107,12 +107,7 @@ Resources:
         - Key: Environment
           Value: Development
 
-  # CloudWatch Log Group
-  WebAppLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: /aws/ec2/webapp
-      RetentionInDays: 7
+
 
 Outputs:
   InstanceId:
