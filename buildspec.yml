@@ -1,0 +1,53 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      java: corretto11
+    commands:
+      - echo "Installing dependencies and tools..."
+      - yum update -y
+      - yum install -y git curl
+
+  pre_build:
+    commands:
+      - echo "Running pre-build steps..."
+      - echo "Java version:"
+      - java -version
+      - echo "Maven version:"
+      - mvn -version
+
+  build:
+    commands:
+      - echo "Building Java application..."
+      - cd app
+      - mvn clean package -DskipTests
+      - echo "Build completed successfully!"
+      - ls -la target/
+
+  post_build:
+    commands:
+      - echo "Running post-build steps..."
+      - cd ..
+      - echo "Preparing deployment files..."
+      - mkdir -p deployment
+      - cp app/target/webapp-1.0-SNAPSHOT.jar deployment/app.jar
+      - cp scripts/deploy.sh deployment/
+      - echo "Artifacts ready for deployment"
+
+artifacts:
+  files:
+    - deployment/**/*
+    - infrastructure/**/*
+    - scripts/**/*
+  name: BuildArtifact
+
+cache:
+  paths:
+    - '/root/.m2/**/*'
+
+reports:
+  BuildReport:
+    files:
+      - target/surefire-reports/**/*.xml
+    file-format: 'JUNITXML'
