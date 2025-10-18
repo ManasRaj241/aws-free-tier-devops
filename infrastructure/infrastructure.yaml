@@ -3,14 +3,9 @@ Description: 'AWS Free Tier DevOps Project - Infrastructure as Code'
 
 Parameters:
   KeyPairName:
-    Type: AWS::EC2::KeyPair::KeyName
-    Description: Name of an existing EC2 KeyPair to SSH into the instance
-    ConstraintDescription: Must be the name of an existing EC2 KeyPair
-
-  InstanceProfileName:
     Type: String
-    Default: EC2InstanceRole
-    Description: Name of the EC2 Instance Profile
+    Description: Name of an existing EC2 KeyPair to SSH into the instance
+    Default: aws-devops-key
 
 Resources:
   # Security Group for EC2
@@ -18,21 +13,17 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Security group for web server - Allow HTTP and SSH
-      VpcId: !Ref DefaultVPC
       SecurityGroupIngress:
-        # Allow SSH from anywhere (restrict this in production!)
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
           CidrIp: 0.0.0.0/0
           Description: SSH access
-        # Allow HTTP
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
           CidrIp: 0.0.0.0/0
           Description: HTTP access
-        # Allow application port 2000 (for Java app)
         - IpProtocol: tcp
           FromPort: 2000
           ToPort: 2000
@@ -45,66 +36,6 @@ Resources:
       Tags:
         - Key: Name
           Value: WebServerSG
-
-  # Get Default VPC
-  DefaultVPC:
-    Type: AWS::EC2::VPC
-    Properties:
-      CidrBlock: 172.31.0.0/16
-      EnableDnsHostnames: true
-      EnableDnsSupport: true
-      Tags:
-        - Key: Name
-          Value: DefaultVPC
-
-  # Get Default Subnet
-  DefaultSubnet:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref DefaultVPC
-      CidrBlock: 172.31.0.0/20
-      AvailabilityZone: !Select [0, !GetAZs '']
-      MapPublicIpOnLaunch: true
-      Tags:
-        - Key: Name
-          Value: DefaultSubnet
-
-  # Internet Gateway
-  InternetGateway:
-    Type: AWS::EC2::InternetGateway
-    Properties:
-      Tags:
-        - Key: Name
-          Value: IGW
-
-  AttachGateway:
-    Type: AWS::EC2::VPCGatewayAttachment
-    Properties:
-      VpcId: !Ref DefaultVPC
-      InternetGatewayId: !Ref InternetGateway
-
-  # Route Table
-  PublicRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref DefaultVPC
-      Tags:
-        - Key: Name
-          Value: PublicRT
-
-  PublicRoute:
-    Type: AWS::EC2::Route
-    DependsOn: AttachGateway
-    Properties:
-      RouteTableId: !Ref PublicRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref InternetGateway
-
-  SubnetRouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref DefaultSubnet
-      RouteTableId: !Ref PublicRouteTable
 
   # S3 Bucket for Build Artifacts
   ArtifactBucket:
@@ -132,13 +63,12 @@ Resources:
   WebServerInstance:
     Type: AWS::EC2::Instance
     Properties:
-      ImageId: ami-0c55b159cbfafe1f0  # Amazon Linux 2 AMI (Free Tier eligible)
+      ImageId: ami-0c55b159cbfafe1f0
       InstanceType: t2.micro
       KeyName: !Ref KeyPairName
-      IamInstanceProfile: !Ref InstanceProfileName
+      IamInstanceProfile: EC2InstanceRole
       SecurityGroupIds:
         - !Ref WebServerSecurityGroup
-      SubnetId: !Ref DefaultSubnet
       UserData:
         Fn::Base64: |
           #!/bin/bash
@@ -150,14 +80,8 @@ Resources:
           # Install Java
           yum install java-11-amazon-corretto-devel -y
           
-          # Install Maven
-          yum install maven -y
-          
           # Install Git
           yum install git -y
-          
-          # Install CloudWatch agent
-          yum install amazon-cloudwatch-agent -y
           
           # Create application directory
           mkdir -p /opt/webapp
@@ -174,13 +98,6 @@ Resources:
           EOF
           
           chmod +x /opt/webapp/start.sh
-          
-          # Add CloudWatch Logs
-          /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
-            -a fetch-config \
-            -m ec2 \
-            -c default \
-            -s
           
           # Signal success
           echo "EC2 Instance initialized successfully" > /var/log/init.log
@@ -221,15 +138,3 @@ Outputs:
     Value: !Ref ArtifactBucket
     Export:
       Name: ArtifactBucketName
-
-  ArtifactBucketArn:
-    Description: S3 Bucket ARN
-    Value: !GetAtt ArtifactBucket.Arn
-    Export:
-      Name: ArtifactBucketArn
-
-Parameters:
-  KeyPairName:
-    Type: AWS::EC2::KeyPair::KeyName
-    Description: Name of an existing EC2 KeyPair to SSH into the instance
-    ConstraintDescription: Must be the name of an existing EC2 KeyPair
