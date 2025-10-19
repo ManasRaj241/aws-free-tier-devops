@@ -7,6 +7,19 @@ Parameters:
     Description: Name of an existing EC2 KeyPair to SSH into the instance
     Default: aws-devops-key
 
+Mappings:
+  RegionMap:
+    us-east-1:
+      AMI: ami-0e86e55d874d04525
+    us-east-2:
+      AMI: ami-0ea3c35d6fc0a3d7e
+    us-west-1:
+      AMI: ami-0d382e80be7ffdae5
+    us-west-2:
+      AMI: ami-0c94855ba95c574c8
+    eu-west-1:
+      AMI: ami-0d4002a13019b7a23
+
 Resources:
   # S3 Bucket for Build Artifacts
   ArtifactBucket:
@@ -25,7 +38,7 @@ Resources:
         - Key: Name
           Value: ArtifactBucket
 
-  # Security Group for EC2 (No VPC specified - uses EC2-Classic/Default)
+  # Security Group for EC2
   WebServerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -53,15 +66,16 @@ Resources:
   # EC2 Instance (t2.micro - Free Tier)
   WebServerInstance:
     Type: AWS::EC2::Instance
+    DependsOn: ArtifactBucket
     Properties:
-      ImageId: ami-0885b1f6bd170450a
+      ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMI]
       InstanceType: t2.micro
       KeyName: !Ref KeyPairName
       IamInstanceProfile: EC2InstanceRole
       SecurityGroups:
         - !Ref WebServerSecurityGroup
       UserData:
-        Fn::Base64: |
+        Fn::Base64: !Sub |
           #!/bin/bash
           set -e
           
