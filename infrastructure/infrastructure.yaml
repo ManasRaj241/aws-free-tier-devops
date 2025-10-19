@@ -8,12 +8,28 @@ Parameters:
     Default: aws-devops-key
 
 Resources:
-  # Security Group for EC2
+  # S3 Bucket for Build Artifacts
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: !Sub 'aws-devops-artifacts-${AWS::AccountId}-${AWS::Region}'
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Name
+          Value: ArtifactBucket
+
+  # Security Group for EC2 (No VPC specified - uses EC2-Classic/Default)
   WebServerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Security group for web server - Allow HTTP and SSH
-      VpcId: !Sub '{{resolve:ec2:DescribeSecurityGroups:SecurityGroups[0].VpcId}}'
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 22
@@ -34,23 +50,6 @@ Resources:
         - Key: Name
           Value: WebServerSG
 
-  # S3 Bucket for Build Artifacts
-  ArtifactBucket:
-    Type: AWS::S3::Bucket
-    DeletionPolicy: Retain
-    Properties:
-      BucketName: !Sub 'aws-devops-artifacts-${AWS::AccountId}-${AWS::Region}'
-      VersioningConfiguration:
-        Status: Enabled
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
-      Tags:
-        - Key: Name
-          Value: ArtifactBucket
-
   # EC2 Instance (t2.micro - Free Tier)
   WebServerInstance:
     Type: AWS::EC2::Instance
@@ -59,7 +58,7 @@ Resources:
       InstanceType: t2.micro
       KeyName: !Ref KeyPairName
       IamInstanceProfile: EC2InstanceRole
-      SecurityGroupIds:
+      SecurityGroups:
         - !Ref WebServerSecurityGroup
       UserData:
         Fn::Base64: |
@@ -67,7 +66,7 @@ Resources:
           set -e
           
           # Update system
-          yum update -y
+          yum update -y --skip-broken
           
           # Install Java
           yum install java-11-amazon-corretto-devel -y
@@ -98,8 +97,6 @@ Resources:
           Value: WebServer
         - Key: Environment
           Value: Development
-
-
 
 Outputs:
   InstanceId:
